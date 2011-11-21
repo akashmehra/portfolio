@@ -32,7 +32,7 @@ def compute_expected_return(gamble):
             (gamble[4] * gamble[5]) +
             (gamble[6] * gamble[7]))
 
-def qp_markowitz(R, u_T, D_T, qp_lambda):
+def qp_markowitz(R, u_T, D_T, qp_lambda, X0=None):
     """ Compute Quadratic Markowitz. """
 
     # Objective function.
@@ -56,11 +56,12 @@ def qp_markowitz(R, u_T, D_T, qp_lambda):
                           B +
                           C)
     # Initial function arguments
-    X_0 = np.ones(R.shape[1]) / float(R.shape[1])
-    a_0 = 10000.
-    B_0 = np.ones(len(R[0])) * 10000.
-    C_0 = np.ones(len(R[0])) * 10000.
-    args = (a_0, B_0, C_0)
+    if X0 is None:
+        X0 = np.ones(R.shape[1]) / float(R.shape[1])
+    a0 = 10000.
+    B0 = np.ones(len(R[0])) * 10000.
+    C0 = np.ones(len(R[0])) * 10000.
+    args = (a0, B0, C0)
     # Bounds
     bounds = [(0., 1.) for i in range(len(R[0]))]
 
@@ -69,7 +70,7 @@ def qp_markowitz(R, u_T, D_T, qp_lambda):
 #    print "R", R
 #    print "u_T", u_T
 #    print "D_T", D_T
-    results = scipy.optimize.fmin_tnc(L_t(T), x0=X_0,
+    results = scipy.optimize.fmin_tnc(L_t(T), x0=X0,
                                       fprime=L_t_prime(T),
                                       args=args,
                                       bounds=bounds,
@@ -160,7 +161,7 @@ def play_double_wealth_game(command_args, s, gambles, links):
         else:
             print response_lines[2]
             # Compute Quadratic Markowitz.
-            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc_denorm)
             alloc = alloc_normalize(alloc_denorm)
             print "Allocation:\n{0}".format(alloc)
             # Don't send allocation for cash holdings.
@@ -216,7 +217,7 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         else:
             print response_lines[3]
             # Compute Quadratic Markowitz.
-            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc_denorm)
             alloc_norm = alloc_normalize(alloc_denorm)
             alloc = alloc_norm * wealth
             print "Allocation:\n{0}".format(alloc_norm)
