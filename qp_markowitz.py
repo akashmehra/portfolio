@@ -7,6 +7,7 @@ import select
 
 PRECISION = 3
 MAX_FRAC = pow(10, PRECISION)
+QP_LAMBDA = 5.
 
 def parse_gambles(lines):
     """ Extract the gambles from a list of lines. """
@@ -40,32 +41,31 @@ def qp_markowitz(R):
     D_T = R - u_T
 
     # Objective function.
-    F_t = lambda t: lambda X, l: (
-                    -(l * np.dot(u_T[t], X)) +
+    F_t = lambda t: lambda X: (
+                    -(QP_LAMBDA * np.dot(u_T[t], X)) +
                      ((1./(t+1)) * np.dot(np.dot(D_T[:t+1], X),
                                           np.dot(D_T[:t+1], X))))
-    F_t_prime = lambda t: lambda X, l: (
-                          -(l * u_T[t]) +
+    F_t_prime = lambda t: lambda X: (
+                          -(QP_LAMBDA * u_T[t]) +
                            ((1./(t+1)) * 2 * np.dot(D_T[:t+1].T,
                                                     np.dot(D_T[:t+1], X))))
     # The Lagrangian.
-    L_t = lambda t: lambda X, l, a, B, C: (
-                    F_t(t)(X, l) +
+    L_t = lambda t: lambda X, a, B, C: (
+                    F_t(t)(X) +
                     (a * (sum(X) - 1)**2) -
                     (np.dot(B, X)) -
                     (np.dot(C, np.ones(len(X)) - X)))
-    L_t_prime = lambda t: lambda X, l, a, B, C: (
-                          F_t_prime(t)(X, l) +
+    L_t_prime = lambda t: lambda X, a, B, C: (
+                          F_t_prime(t)(X) +
                           (a * 2 * np.ones(len(X)) * (sum(X) - 1)) -
                           B +
                           C)
     # Initial function arguments
     X_0 = np.ones(R.shape[1]) / float(R.shape[1])
-    l_0 = 5.
     a_0 = 10000.
     B_0 = np.ones(len(R[0])) * 10000.
     C_0 = np.ones(len(R[0])) * 10000.
-    args = (l_0, a_0, B_0, C_0)
+    args = (a_0, B_0, C_0)
     # Bounds
     bounds = [(0., 1.) for i in range(len(R[0]))]
 
