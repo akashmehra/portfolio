@@ -161,7 +161,7 @@ def play_double_wealth_game(command_args, s, gambles, links):
         else:
             print response_lines[2]
             # Compute Quadratic Markowitz.
-            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc_denorm)
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc)
             alloc = alloc_normalize(alloc_denorm)
             print "Allocation:\n{0}".format(alloc)
             # Don't send allocation for cash holdings.
@@ -217,7 +217,7 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         else:
             print response_lines[3]
             # Compute Quadratic Markowitz.
-            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc_denorm)
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA, X0=alloc_norm)
             alloc_norm = alloc_normalize(alloc_denorm)
             alloc = alloc_norm * wealth
             print "Allocation:\n{0}".format(alloc_norm)
