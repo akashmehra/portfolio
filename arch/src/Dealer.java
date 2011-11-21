@@ -362,12 +362,12 @@ public class Dealer {
 				
 				playARound();
 				
-				System.out.print("Round "+i+" :");
+        String ticker = "Round "+i+" :";
 				for(int k=0;k<gambleList.size();k++)
 				{
-					System.out.print(gambleList.get(k).getLastResult()+" ");
+					ticker += gambleList.get(k).getLastResult()+" ";
 				}
-				System.out.println();
+				System.out.println(ticker);
 				
 				for (int j = 0; j < playerCount; j++) {
 
@@ -409,11 +409,16 @@ public class Dealer {
 				{
 					Player player = playerList.get(j);
 					if(player.isCheated() == true)
+          {
 						continue;
+          }
 					
+					player.writeToClient(ticker);
 					player.writeToClient(clientResult.get(player.getName()));
 					if(i != ROUND-1)
-					player.writeToClient("Give allocation:");
+          {
+            player.writeToClient("Give allocation:");
+          }
 				}
 				
 			}
@@ -480,19 +485,20 @@ public class Dealer {
 				
 				playARound();
 				
-				System.out.print("Round "+i+" :");
-				
+        String ticker = "Round "+i+" :";
 				for(int k=0;k<gambleList.size();k++)
 				{
-					System.out.print(gambleList.get(k).getLastResult()+" ");
+					ticker += gambleList.get(k).getLastResult()+" ";
 				}
-				System.out.println();
+				System.out.println(ticker);
 
 				for (int j = 0; j < playerCount; j++) {
 					Player player = playerList.get(j);
 					
 					if(player.isCheated() == true)
+          {
 						continue;
+          }
 					
 					String allocation = player.readFromClient();
 
@@ -534,12 +540,17 @@ public class Dealer {
 					
 					Player player = playerList.get(j);
 					if(player.isCheated() == true)
+          {
 						continue;
+          }
 					
+					player.writeToClient(ticker);
 					player.writeToClient(clientResult.get(player.getName()));
 					player.writeToClient(position);
 					if(i != ROUND-1)
+          {
 						player.writeToClient("Give allocation:");
+          }
 				}
 				
 

@@ -35,6 +35,7 @@ def compute_expected_return(gamble):
 def qp_markowitz(R):
     """ Compute Quadratic Markowitz. """
 
+    # Mean and deviation.
     u_T = np.array([np.average(R[:t], axis=0) for t in range(1, R.shape[0]+1)])
     D_T = R - u_T
 
@@ -58,17 +59,6 @@ def qp_markowitz(R):
                           (a * 2 * np.ones(len(X)) * (sum(X) - 1)) -
                           B +
                           C)
-
-#    # Equality constraints.
-#    f_eqcons = lambda X, l: np.array([(sum(X) - 1)**2])
-#    # Inequality constraints.
-#    f_ieqcons = lambda X, l: np.hstack((X, np.ones(len(X)) - X))
-#    # Gradient of equality constraints.
-#    fprime_eqcons = lambda X, l: 2 * np.ones(len(X)) * (sum(X) - 1)
-#    # Gradient of inequality constraints.
-#    fprime_ieqcons = lambda X, l: np.vstack((-np.identity(len(X)),
-#                                             np.identity(len(X))))
-
     # Initial function arguments
     X_0 = np.ones(R.shape[1]) / float(R.shape[1])
     l_0 = 5.
@@ -76,40 +66,20 @@ def qp_markowitz(R):
     B_0 = np.ones(len(R[0])) * 10000.
     C_0 = np.ones(len(R[0])) * 10000.
     args = (l_0, a_0, B_0, C_0)
-#    args = (l_0,)
     # Bounds
     bounds = [(0., 1.) for i in range(len(R[0]))]
 
     T = R.shape[0] - 1
-    print "T", T
-    print "R", R
-    print "u_T", u_T
-    print "D_T", D_T
+#    print "T", T
+#    print "R", R
+#    print "u_T", u_T
+#    print "D_T", D_T
     results = scipy.optimize.fmin_tnc(L_t(T), x0=X_0,
                                       fprime=L_t_prime(T),
                                       args=args,
-                                      bounds=bounds)
+                                      bounds=bounds,
+                                      messages=scipy.optimize.tnc.MSG_NONE)
     return results[0]
-    #results = scipy.optimize.fmin_l_bfgs_b(L_t(T), x0=X_0,
-    #                                       fprime=L_t_prime(T),
-    #                                       args=args,
-    #                                       bounds=bounds)
-    #results = scipy.optimize.fmin_bfgs(L_t(T), fprime=L_t_prime(T),
-    #                                   x0=X_0, args=args, maxiter=1000)
-    #results = scipy.optimize.fmin_slsqp(L_t(T), x0=X_0,
-    #                                    fprime=L_t_prime(T),
-    #                                    args=args,
-    #                                    bounds=bounds,
-    #                                    iter=10000)
-    #results = scipy.optimize.fmin_slsqp(F_t(T), x0=X_0,
-    #                                    fprime=F_t_prime(T),
-    #                                    args=args,
-    #                                    bounds=bounds,
-    #                                    f_eqcons=f_eqcons,
-    #                                    f_ieqcons=f_ieqcons,
-    #                                    fprime_eqcons=fprime_eqcons,
-    #                                    fprime_ieqcons=fprime_ieqcons,
-    #                                    iprint=2)
 
 def remove_blank_lines(lines):
     """ Filter out blank lines. """
@@ -144,27 +114,32 @@ def play_double_wealth_game(command_args, s, gambles, links):
 
     pass
 
+def alloc_normalize(alloc_denorm):
+    """ Normalize and scale allocations. """
+
+    assert((alloc_denorm >= 0).all())
+    alloc_norm = alloc_denorm / sum(alloc_denorm)
+    alloc_trunc = (alloc_norm * MAX_FRAC).astype(int)
+    return alloc_trunc / float(MAX_FRAC)
+
 def play_cumulative_wealth_game(command_args, s, gambles, links):
     """ Play a long-term investment game. """
 
     # Initialze R and compute Quadratic Markowitz.
+    wealth = 1.
     R = np.array([[1.] + [compute_expected_return(g) for g in gambles]])
     alloc_denorm = qp_markowitz(R)
-    print "alloc_denorm", alloc_denorm 
-    # Normalize.
-    alloc_norm = alloc_denorm / sum(alloc_denorm)
-    alloc_trunc = (alloc_norm * MAX_FRAC).astype(int)
-    alloc = alloc_trunc / float(sum(alloc_trunc))
+    alloc_norm = alloc_normalize(alloc_denorm)
+    alloc = alloc_norm * wealth
+    print "Allocation:", alloc_norm
     # Don't send allocation for cash holdings.
     str_alloc = serialize_list(alloc[1:])
-    print "str_alloc", str_alloc
     s.send(str_alloc + '\n')
-    wealth = 1
 
     # Loop server iterations.
     while True:
         str_response = socket_recv_all(s).strip()
-        print "str_response", str_response
+#        print "str_response", str_response
         response_lines = str_response.split('\n')
         response_lines = remove_blank_lines(response_lines)
         str_returns = response_lines[0].strip().split(':')[1]
@@ -173,10 +148,12 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         print response_lines[1]
         amounts = [eval(a) for a in response_lines[1].strip().split(',')]
         print response_lines[2]
-        print "amounts", amounts
-        print "returns", returns
-        wealth = np.dot(alloc, R[-1])
-        print "wealth:", wealth
+        positions_list = response_lines[2].strip().split(',')
+        positions = dict([p.split(':') for p in positions_list])
+        print "Amounts:", amounts
+        print "Returns:", returns
+        wealth = float(positions[command_args['name']])
+        print "Wealth:", wealth
         assert(len(response_lines) == 4)
         if response_lines[3].find('END') == 0:
             print "Game over."
@@ -186,14 +163,11 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
             print response_lines[3]
             # Compute Quadratic Markowitz.
             alloc_denorm = qp_markowitz(R)
-            print "alloc_denorm", alloc_denorm 
-            # Normalize.
-            alloc_norm = alloc_denorm / sum(alloc_denorm)
-            alloc_trunc = (wealth * alloc_norm * MAX_FRAC).astype(int)
-            alloc = alloc_trunc / float(MAX_FRAC)
+            alloc_norm = alloc_normalize(alloc_denorm)
+            alloc = alloc_norm * wealth
+            print "Allocation:", alloc_norm
             # Don't send allocation for cash holdings.
             str_alloc = serialize_list(alloc[1:])
-            print "str_alloc", str_alloc
             s.send(str_alloc + '\n')
 
 
@@ -234,8 +208,6 @@ def main(argv):
     links = parse_links(lines[link_idx:give_alloc_idx])
     print "num gambles:", len(gambles)
     print "num links:", len(links)
-    #print "gambles:", gambles
-    #print "links:", links
 
     if give_alloc_idx < 0:
         str_command = socket_recv_all(s)
