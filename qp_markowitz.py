@@ -7,7 +7,7 @@ import select
 
 PRECISION = 3
 MAX_FRAC = pow(10, PRECISION)
-QP_LAMBDA = 5.
+QP_LAMBDA = 150.
 
 def parse_gambles(lines):
     """ Extract the gambles from a list of lines. """
@@ -103,8 +103,9 @@ def socket_recv_all(s, timeout=None):
 
 def serialize_list(l):
     """ Serialize a list in the game format 'l_0,...,l_n-1'. """
-    s = "{:.3f}".format(l[0])
-    return reduce(lambda s, e: "{}, {:.3f}".format(s, e), l[1:], s)
+
+    s = "{0:0.3f}".format(l[0])
+    return reduce(lambda s, e: "{0}, {1:0.3f}".format(s, e), l[1:], s)
 
 def play_double_wealth_game(command_args, s, gambles, links):
     """
@@ -115,15 +116,22 @@ def play_double_wealth_game(command_args, s, gambles, links):
     pass
 
 def alloc_normalize(alloc_denorm):
-    """ Normalize and scale allocations. """
+    """
+    Normalize and scale allocations. Play on the safe side by making the norm
+    of the allocation vector slighly smaller than 1 to avoid being accused of
+    cheating by the server.
+    """
 
     assert((alloc_denorm >= 0).all())
-    alloc_norm = alloc_denorm / sum(alloc_denorm)
+    slightly_gt_one = 1. + (1. / MAX_FRAC)
+    alloc_norm = alloc_denorm / (sum(alloc_denorm) * slightly_gt_one)
     alloc_trunc = (alloc_norm * MAX_FRAC).astype(int)
     return alloc_trunc / float(MAX_FRAC)
 
 def play_cumulative_wealth_game(command_args, s, gambles, links):
     """ Play a long-term investment game. """
+
+    np.set_printoptions(precision=PRECISION+1, suppress=True)
 
     # Initialze R and compute Quadratic Markowitz.
     wealth = 1.
@@ -131,7 +139,7 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
     alloc_denorm = qp_markowitz(R)
     alloc_norm = alloc_normalize(alloc_denorm)
     alloc = alloc_norm * wealth
-    print "Allocation:", alloc_norm
+    print "Allocation:\n{0}".format(alloc_norm)
     # Don't send allocation for cash holdings.
     str_alloc = serialize_list(alloc[1:])
     s.send(str_alloc + '\n')
@@ -145,15 +153,17 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         str_returns = response_lines[0].strip().split(':')[1]
         returns = [eval(r) for r in str_returns.split(' ')]
         R = np.vstack((R, [1.] + returns))
-        print response_lines[1]
+#        print response_lines[1]
         amounts = [eval(a) for a in response_lines[1].strip().split(',')]
-        print response_lines[2]
-        positions_list = response_lines[2].strip().split(',')
-        positions = dict([p.split(':') for p in positions_list])
-        print "Amounts:", amounts
-        print "Returns:", returns
-        wealth = float(positions[command_args['name']])
-        print "Wealth:", wealth
+#        print response_lines[2]
+        str_positions = response_lines[2].strip()
+        positions = dict([(lambda x: (x[0], float(x[1])))(p.split(':'))
+                          for p in str_positions.split(',')])
+        print "Positions: {0}".format(positions)
+#        print "Amounts:", amounts
+        print "Returns:\n{0}".format(np.array(returns))
+        wealth = positions[command_args['name']]
+        print "Wealth: {0}".format(wealth)
         assert(len(response_lines) == 4)
         if response_lines[3].find('END') == 0:
             print "Game over."
@@ -165,7 +175,7 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
             alloc_denorm = qp_markowitz(R)
             alloc_norm = alloc_normalize(alloc_denorm)
             alloc = alloc_norm * wealth
-            print "Allocation:", alloc_norm
+            print "Allocation:\n{0}".format(alloc_norm)
             # Don't send allocation for cash holdings.
             str_alloc = serialize_list(alloc[1:])
             s.send(str_alloc + '\n')
@@ -206,8 +216,8 @@ def main(argv):
         give_alloc_idx = -1
     gambles = parse_gambles(lines[:link_idx])
     links = parse_links(lines[link_idx:give_alloc_idx])
-    print "num gambles:", len(gambles)
-    print "num links:", len(links)
+    print "num gambles: {0}".format(len(gambles))
+    print "num links: {0}".format(len(links))
 
     if give_alloc_idx < 0:
         str_command = socket_recv_all(s)
