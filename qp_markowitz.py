@@ -7,7 +7,6 @@ import select
 
 PRECISION = 3
 MAX_FRAC = pow(10, PRECISION)
-QP_LAMBDA = 150.
 
 def parse_gambles(lines):
     """ Extract the gambles from a list of lines. """
@@ -33,20 +32,16 @@ def compute_expected_return(gamble):
             (gamble[4] * gamble[5]) +
             (gamble[6] * gamble[7]))
 
-def qp_markowitz(R):
+def qp_markowitz(R, u_T, D_T, qp_lambda):
     """ Compute Quadratic Markowitz. """
-
-    # Mean and deviation.
-    u_T = np.array([np.average(R[:t], axis=0) for t in range(1, R.shape[0]+1)])
-    D_T = R - u_T
 
     # Objective function.
     F_t = lambda t: lambda X: (
-                    -(QP_LAMBDA * np.dot(u_T[t], X)) +
+                    -(qp_lambda * np.dot(u_T[t], X)) +
                      ((1./(t+1)) * np.dot(np.dot(D_T[:t+1], X),
                                           np.dot(D_T[:t+1], X))))
     F_t_prime = lambda t: lambda X: (
-                          -(QP_LAMBDA * u_T[t]) +
+                          -(qp_lambda * u_T[t]) +
                            ((1./(t+1)) * 2 * np.dot(D_T[:t+1].T,
                                                     np.dot(D_T[:t+1], X))))
     # The Lagrangian.
@@ -107,14 +102,6 @@ def serialize_list(l):
     s = "{0:0.3f}".format(l[0])
     return reduce(lambda s, e: "{0}, {1:0.3f}".format(s, e), l[1:], s)
 
-def play_double_wealth_game(command_args, s, gambles, links):
-    """
-    Play a game where the objective is to double your wealth at each
-    independent round.
-    """
-
-    pass
-
 def alloc_normalize(alloc_denorm):
     """
     Normalize and scale allocations. Play on the safe side by making the norm
@@ -128,15 +115,70 @@ def alloc_normalize(alloc_denorm):
     alloc_trunc = (alloc_norm * MAX_FRAC).astype(int)
     return alloc_trunc / float(MAX_FRAC)
 
+def play_double_wealth_game(command_args, s, gambles, links):
+    """
+    Play a game where the objective is to double your wealth at each
+    independent round.
+    """
+
+    QP_LAMBDA = 0.25
+    np.set_printoptions(precision=PRECISION+1, suppress=True)
+
+    # Initialze R and compute Quadratic Markowitz.
+    R = np.array([[1.] + [compute_expected_return(g) for g in gambles]])
+    u_T = np.array([np.average(R[:t], axis=0) for t in range(1, R.shape[0]+1)])
+    D_T = R - u_T
+    alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
+    alloc = alloc_normalize(alloc_denorm)
+    print "Allocation:\n{0}".format(alloc)
+    # Don't send allocation for cash holdings.
+    str_alloc = serialize_list(alloc[1:])
+    s.send(str_alloc + '\n')
+
+    # Loop server iterations.
+    while True:
+        str_response = socket_recv_all(s).strip()
+#        print "str_response", str_response
+        response_lines = str_response.split('\n')
+        response_lines = remove_blank_lines(response_lines)
+        str_returns = response_lines[0].strip().split(':')[1]
+        returns = [eval(r) for r in str_returns.split(' ')]
+        R = np.vstack((R, [1.] + returns))
+        u_T = np.vstack((u_T, np.average(R, axis=0)))
+        D_T = np.vstack((D_T, u_T[-1] - R[-1]))
+#        print response_lines[1]
+        amounts = [eval(a) for a in response_lines[1].strip().split(',')]
+#        print "Amounts:", amounts
+        print "Returns:\n{0}".format(np.array(returns))
+        wealth = np.sum(amounts)
+        print "Wealth: {0}".format(wealth)
+        assert(len(response_lines) == 3)
+        if response_lines[2].find('END') == 0:
+            print "Game over."
+            print response_lines[2]
+            break;
+        else:
+            print response_lines[2]
+            # Compute Quadratic Markowitz.
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
+            alloc = alloc_normalize(alloc_denorm)
+            print "Allocation:\n{0}".format(alloc)
+            # Don't send allocation for cash holdings.
+            str_alloc = serialize_list(alloc[1:])
+            s.send(str_alloc + '\n')
+
 def play_cumulative_wealth_game(command_args, s, gambles, links):
     """ Play a long-term investment game. """
 
+    QP_LAMBDA = 175.
     np.set_printoptions(precision=PRECISION+1, suppress=True)
 
     # Initialze R and compute Quadratic Markowitz.
     wealth = 1.
     R = np.array([[1.] + [compute_expected_return(g) for g in gambles]])
-    alloc_denorm = qp_markowitz(R)
+    u_T = np.array([np.average(R[:t], axis=0) for t in range(1, R.shape[0]+1)])
+    D_T = R - u_T
+    alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
     alloc_norm = alloc_normalize(alloc_denorm)
     alloc = alloc_norm * wealth
     print "Allocation:\n{0}".format(alloc_norm)
@@ -153,6 +195,8 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         str_returns = response_lines[0].strip().split(':')[1]
         returns = [eval(r) for r in str_returns.split(' ')]
         R = np.vstack((R, [1.] + returns))
+        u_T = np.vstack((u_T, np.average(R, axis=0)))
+        D_T = np.vstack((D_T, u_T[-1] - R[-1]))
 #        print response_lines[1]
         amounts = [eval(a) for a in response_lines[1].strip().split(',')]
 #        print response_lines[2]
@@ -172,14 +216,13 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         else:
             print response_lines[3]
             # Compute Quadratic Markowitz.
-            alloc_denorm = qp_markowitz(R)
+            alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
             alloc_norm = alloc_normalize(alloc_denorm)
             alloc = alloc_norm * wealth
             print "Allocation:\n{0}".format(alloc_norm)
             # Don't send allocation for cash holdings.
             str_alloc = serialize_list(alloc[1:])
             s.send(str_alloc + '\n')
-
 
 def main(argv):
     """ Quadratic Markowitz main method. """
