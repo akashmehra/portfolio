@@ -6,4 +6,4 @@ example: java Dealer 8080 2 1 200 16 ../gambles_n200_p80&
 
 start the client by issuing the following command:
 python qp_markowitz.py <host> <port> <mode> <gambles> <num-classes> <name-player>
-example: python qp_markowitz.py localhost 8080 2 200 16 ReissSoaferMehra
+example: python qp_markowitz.py localhost 8080 2 200 16 ReissSofaerMehra
