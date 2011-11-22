@@ -26,6 +26,11 @@ def parse_links(lines):
         links.append(eval(line))
     return links
 
+def parse_returns(str_returns):
+    """ Extract list of returns from string. """
+
+    return [eval(s) for s in str_returns.split(',')]
+
 def compute_expected_return(gamble):
     """ Compute gamble expected return. """
     return ((gamble[2] * gamble[3]) +
@@ -58,9 +63,9 @@ def qp_markowitz(R, u_T, D_T, qp_lambda, X0=None):
     # Initial function arguments
     if X0 is None:
         X0 = np.ones(R.shape[1]) / float(R.shape[1])
-    a0 = 10000.
-    B0 = np.ones(len(R[0])) * 10000.
-    C0 = np.ones(len(R[0])) * 10000.
+    a0 = 1000.
+    B0 = np.ones(len(R[0])) * 1000.
+    C0 = np.ones(len(R[0])) * 1000.
     args = (a0, B0, C0)
     # Bounds
     bounds = [(0., 1.) for i in range(len(R[0]))]
@@ -142,8 +147,7 @@ def play_double_wealth_game(command_args, s, gambles, links):
 #        print "str_response", str_response
         response_lines = str_response.split('\n')
         response_lines = remove_blank_lines(response_lines)
-        str_returns = response_lines[0].strip().split(':')[1]
-        returns = [eval(r) for r in str_returns.split(' ')]
+        returns = parse_returns(response_lines[0].strip())
         R = np.vstack((R, [1.] + returns))
         u_T = np.vstack((u_T, np.average(R, axis=0)))
         D_T = np.vstack((D_T, u_T[-1] - R[-1]))
@@ -171,7 +175,7 @@ def play_double_wealth_game(command_args, s, gambles, links):
 def play_cumulative_wealth_game(command_args, s, gambles, links):
     """ Play a long-term investment game. """
 
-    QP_LAMBDA = 175.
+    QP_LAMBDA = 10.
     np.set_printoptions(precision=PRECISION+1, suppress=True)
 
     # Initialze R and compute Quadratic Markowitz.
@@ -193,8 +197,7 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
 #        print "str_response", str_response
         response_lines = str_response.split('\n')
         response_lines = remove_blank_lines(response_lines)
-        str_returns = response_lines[0].strip().split(':')[1]
-        returns = [eval(r) for r in str_returns.split(' ')]
+        returns = parse_returns(response_lines[0].strip())
         R = np.vstack((R, [1.] + returns))
         u_T = np.vstack((u_T, np.average(R, axis=0)))
         D_T = np.vstack((D_T, u_T[-1] - R[-1]))

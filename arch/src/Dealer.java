@@ -1,3 +1,5 @@
+import java.awt.BorderLayout;
+import java.awt.Font;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -8,7 +10,34 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class Dealer {
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+public class Dealer extends JFrame{
+	
+	
+    public Dealer() {
+        this.setTitle("Portfolio Management");
+        this.setSize(this.WIDTH, this.HEIGHT);
+        this.setLocation((dim.width - this.WIDTH) / 2,
+                         (dim.height - this.HEIGHT) / 2);
+        this.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
+
+        winnerLabel.setFont(new Font("Dialog",1,20));
+        wealthLabel.setFont(new Font("Dialog",1,20));
+        roundLabel.setFont(new Font("Dialog",1,20));
+        winnerLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+        wealthLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+        roundLabel.setAlignmentX(JLabel.RIGHT_ALIGNMENT);
+        
+        infoPanel.add(winnerLabel,BorderLayout.LINE_START);
+        infoPanel.add(wealthLabel,BorderLayout.CENTER);
+        infoPanel.add(roundLabel,BorderLayout.LINE_END);
+        
+        this.add(infoPanel,BorderLayout.PAGE_START);
+        //this.add(panel);
+    }
 
 	public static String HOST = "localhost";
 	public static int PORT = 8888;
@@ -19,6 +48,15 @@ public class Dealer {
 	public static int MODE = 1;
 	public static int classNum = 16;
 	public static int CLASSCHANGETIMES = 10;
+    public static final int WIDTH = 800;
+    public static final int HEIGHT = 600;
+    private static MyPanel panel = new MyPanel();
+    private static JPanel infoPanel = new JPanel();
+    private static JLabel winnerLabel = new JLabel("Winner is Nobody");
+    private static JLabel wealthLabel = new JLabel("Wealth is 0");
+    private static JLabel roundLabel = new JLabel("Round 0");
+    java.awt.Dimension dim = java.awt.Toolkit.getDefaultToolkit()
+            .getScreenSize();
 
 
 	private ServerSocket server;
@@ -30,6 +68,8 @@ public class Dealer {
 	private List<String> outputToClient = new ArrayList<String>();
 	private HashMap<String,String> clientResult = new HashMap<String,String>();
 	private String tables;
+	private List<Player> winners = new ArrayList<Player>();
+
 
 	private List<Integer> roundToChangeType = new ArrayList<Integer>();
 	
@@ -154,7 +194,7 @@ public class Dealer {
 				return false;
 			sum += value;
 		}
-		if (sum > max)
+		if (sum > max+0.001)
 			return false;
 		else
 			return true;
@@ -329,7 +369,124 @@ public class Dealer {
 		return positions.toString();
 		
 	}
-
+	
+	public void loadHistogram(List<Player> playerList, int mode)
+	{
+        Dealer.panel.setHistogramTitle("Wealth", "Player");
+        if(mode == 1)
+        {
+        	for(Player p:playerList)
+        	{
+        		MyPanel.insert(p.getName(), p.getScore(),p.isCheated());
+        	}
+        }else
+        {
+        	for(Player p:playerList)
+        	{
+        		MyPanel.insert(p.getName(), p.getWealth(),p.isCheated());
+        	}
+        	
+        }  
+        
+        Dealer.panel.updateUI();
+	}
+	
+	
+	
+	public void updateHistogram(List<Player>playerList,int mode)
+	{
+        if(mode == 1)
+        {
+        	for(Player p:playerList)
+        	{
+        		MyPanel.update(p.getName(), p.getScore(),p.isCheated());
+        	}
+        }else
+        {
+        	for(Player p:playerList)
+        	{
+        		MyPanel.update(p.getName(), p.getWealth(),p.isCheated());
+        	}
+        	
+        }
+        
+        Dealer.panel.updateUI();
+		
+	}
+	
+	public void updateInfo(List<Player>playerList,int mode,int round)
+	{
+		
+		DecimalFormat df = new DecimalFormat("####.######");
+        if(mode == 1)
+        {
+        	StringBuilder sb = new StringBuilder();
+        	
+        	for(Player p:playerList)
+        	{
+        		sb.append(p.getName()+" ");
+        	}
+        	
+        	winnerLabel.setText("Winner : "+sb.toString());
+        	wealthLabel.setText("Score : "+df.format(playerList.get(0).getScore()));
+        	roundLabel.setText("Round "+String.valueOf(round));
+        	
+        }else
+        {
+        	StringBuilder sb = new StringBuilder();
+        	
+        	for(Player p:playerList)
+        	{
+        		sb.append(p.getName()+" ");
+        	}
+        	
+        	winnerLabel.setText("Winner :"+ sb.toString());
+        	wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth()));
+        	roundLabel.setText("Round "+" "+String.valueOf(round));
+     	
+        }
+        
+        Dealer.infoPanel.updateUI();
+		
+	}
+	
+	
+	public void reportResult(List<Player>playerList,int mode)
+	{
+		
+		DecimalFormat df = new DecimalFormat("####.######");
+        if(mode == 1)
+        {
+        	StringBuilder sb = new StringBuilder();
+        	
+        	for(Player p:playerList)
+        	{
+        		sb.append(p.getName()+" ");
+        	}
+        	
+        	winnerLabel.setText("Winner : "+sb.toString());
+        	wealthLabel.setText("Score : "+df.format(playerList.get(0).getScore()));
+        	roundLabel.setText("GAME END");
+        	
+        }else
+        {
+        	StringBuilder sb = new StringBuilder();
+        	
+        	for(Player p:playerList)
+        	{
+        		sb.append(p.getName()+" ");
+        	}
+        	
+        	winnerLabel.setText("Winner :"+ sb.toString());
+        	wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth())+" : "+df.format(playerList.get(0).getSharpeRatio()));
+        	roundLabel.setText("GAME END");
+     	
+        }
+        
+        Dealer.infoPanel.updateUI();
+		
+	}
+	
 	public void playGameOne() {
 
 		try {
@@ -346,6 +503,9 @@ public class Dealer {
 
 			readGamblesFromFile(filePath);
 			assignClassType();
+			this.add(panel,BorderLayout.CENTER);
+			loadHistogram(playerList,1);
+
 
 			// Send three tables
 			for (int i = 0; i < playerCount; i++) {
@@ -362,11 +522,14 @@ public class Dealer {
 				
 				playARound();
 				
-        String ticker = "Round "+i+" :";
-				for(int k=0;k<gambleList.size();k++)
+				System.out.print("Round "+i+" :");
+		        String ticker = "";
+				for(int k=0;k<gambleList.size()-1;k++)
 				{
-					ticker += gambleList.get(k).getLastResult()+" ";
+					ticker += gambleList.get(k).getLastResult()+",";
 				}
+				ticker += gambleList.get(gambleList.size()-1).getLastResult();
+				
 				System.out.println(ticker);
 				
 				for (int j = 0; j < playerCount; j++) {
@@ -405,34 +568,52 @@ public class Dealer {
 					//player.writeToClient(toClient);
 				}
 				
+				double maxScore = 0;
 				for(int j =0;j< playerCount;j++)
 				{
 					Player player = playerList.get(j);
 					if(player.isCheated() == true)
-          {
 						continue;
-          }
+					
+					if(player.getScore()>maxScore)
+					{
+						maxScore = player.getScore();
+						winners.clear();
+						winners.add(player);
+					} else if(player.getScore() == maxScore)
+					{
+						winners.add(player);
+					}
 					
 					player.writeToClient(ticker);
 					player.writeToClient(clientResult.get(player.getName()));
 					if(i != ROUND-1)
-          {
-            player.writeToClient("Give allocation:");
-          }
+					player.writeToClient("Give allocation:");
 				}
+				
+				updateHistogram(playerList,1);
+				updateInfo(winners,1,i+1);
 				
 			}
 
 			
 			System.out.println("Game End");
-			// List<String> winners = new ArrayList<String>();
-			// double maxProfit = 0;
+			double maxScore = 0;
 
 			for (int j = 0; j < playerCount; j++) {
 
 				Player player = playerList.get(j);
 				if(player.isCheated() == false)
 				{
+					if(player.getScore() > maxScore)
+					{
+						maxScore = player.getScore();
+						winners.clear();
+						winners.add(player);
+					}else if(player.getScore() == maxScore)
+					{
+						winners.add(player);
+					}
 					System.out.println("Player " + player.getName() + " : "
 						+ player.getScore());
 					player.writeToClient("END YOUR SCORE IS " + player.getScore());
@@ -441,6 +622,14 @@ public class Dealer {
 					System.out.println("Player " + player.getName() + " : Cheated");
 				}
 
+			}
+			
+			reportResult(winners,1);
+			
+			System.out.println("Winner:");
+			for(Player p:winners)
+			{
+				System.out.println(p.getName()+" : "+p.getScore());
 			}
 
 		} catch (Exception e) {
@@ -464,6 +653,8 @@ public class Dealer {
 
 			readGamblesFromFile(filePath);
 			assignClassType();
+			this.add(panel,BorderLayout.CENTER);
+			loadHistogram(playerList,2);
 
 			// Send three tables
 			for (int i = 0; i < playerCount; i++) {
@@ -485,20 +676,23 @@ public class Dealer {
 				
 				playARound();
 				
-        String ticker = "Round "+i+" :";
-				for(int k=0;k<gambleList.size();k++)
+				System.out.print("Round "+i+" :");
+				
+				
+		        String ticker = "";
+				for(int k=0;k<gambleList.size()-1;k++)
 				{
-					ticker += gambleList.get(k).getLastResult()+" ";
+					ticker += gambleList.get(k).getLastResult()+",";
 				}
+				ticker += gambleList.get(gambleList.size()-1).getLastResult();
+				
 				System.out.println(ticker);
 
 				for (int j = 0; j < playerCount; j++) {
 					Player player = playerList.get(j);
 					
 					if(player.isCheated() == true)
-          {
 						continue;
-          }
 					
 					String allocation = player.readFromClient();
 
@@ -521,10 +715,12 @@ public class Dealer {
 					double outcome = 0;
 
 					result = computeOutcome(allocList);
-
 					outcome = sum(result);
+					
+					double gamblesReturn = outcome - cost;
 
 					player.setWealth(player.getWealth()+outcome);
+					player.getReturns().add(gamblesReturn);
 
 					String toClient = convertListToString(result);
 					clientResult.put(player.getName(), toClient);
@@ -534,47 +730,77 @@ public class Dealer {
 				}
 				
 				String position = getEveryoneWealth();
-		
+				double maxPosition = Double.MIN_VALUE;
 				for(int j =0;j< playerCount;j++)
 				{
 					
 					Player player = playerList.get(j);
 					if(player.isCheated() == true)
-          {
 						continue;
-          }
 					
+					if(player.getWealth()>maxPosition)
+					{
+						maxPosition = player.getWealth();
+						winners.clear();
+						winners.add(player);
+					} else if(player.getWealth() == maxPosition)
+					{
+						winners.add(player);
+					}
 					player.writeToClient(ticker);
 					player.writeToClient(clientResult.get(player.getName()));
 					player.writeToClient(position);
 					if(i != ROUND-1)
-          {
 						player.writeToClient("Give allocation:");
-          }
 				}
+				
+				updateHistogram(playerList,2);
+				updateInfo(winners,2,i+1);
+
 				
 
 			}
 
 			System.out.println("Game End");
-			// List<String> winners = new ArrayList<String>();
-			// double maxProfit = 0;
-
+			double maxRatio = Double.MIN_VALUE;
+			DecimalFormat df = new DecimalFormat("####.######");
+			
 			for (int j = 0; j < playerCount; j++) {
 
 				Player player = playerList.get(j);
+				player.caculateSharpeRatio();
 				
 				if(player.isCheated() == false)
 				{
+					if(player.getSharpeRatio() > maxRatio)
+					{
+						maxRatio = player.getSharpeRatio();
+						winners.clear();
+						winners.add(player);
+					}
+					else if(player.getSharpeRatio() == maxRatio)
+					{
+						winners.add(player);
+					}
 					System.out.println("Player " + player.getName() + " : "
-						+ player.getWealth());
-					player.writeToClient("END YOUR WEALTH IS " + player.getWealth());
+						+ df.format(player.getWealth())+" : "+ df.format(player.getSharpeRatio()));
+					player.writeToClient("END YOUR WEALTH IS " + df.format(player.getWealth())+ " SHARPERATION : " + df.format(player.getSharpeRatio()));
 				}else
 				{
 					System.out.println("Player " + player.getName() + " : Cheated");
 				}
 
 			}
+			
+			reportResult(winners,2);
+
+			
+			System.out.println("Winner:");
+			for(Player p:winners)
+			{
+				System.out.println(p.getName()+" : "+df.format(p.getWealth())+" : "+df.format(p.getSharpeRatio()));
+			}
+			
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -637,6 +863,7 @@ public class Dealer {
 		Dealer.filePath = args[5];
 		
 		Dealer dealer = new Dealer();
+		dealer.setVisible(true);
 		
 		if(Dealer.MODE == 1)
 		{
