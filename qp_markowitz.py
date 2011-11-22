@@ -175,7 +175,7 @@ def play_double_wealth_game(command_args, s, gambles, links):
 def play_cumulative_wealth_game(command_args, s, gambles, links):
     """ Play a long-term investment game. """
 
-    QP_LAMBDA = 10.
+    QP_LAMBDA = 8.
     np.set_printoptions(precision=PRECISION+1, suppress=True)
 
     # Initialze R and compute Quadratic Markowitz.
