@@ -99,9 +99,15 @@ class MyPanel extends JPanel {
             
             if(state.get(i)==false)
             {
-            	g.drawString(df.format(value.get(i)),
+            	if(value.get(i)<99999999)
+            		g.drawString(df.format(value.get(i)),
                          wigth * (i * 2 + 1) + SIZE,
                          Dealer.HEIGHT - SIZE - 20 - height);
+            	else
+            	   	g.drawString(value.get(i).toString(),
+                            wigth * (i * 2 + 1) + SIZE,
+                            Dealer.HEIGHT - SIZE - 20 - height);
+            		
             }else
             {
                 g.drawString("Cheated",
@@ -113,8 +119,14 @@ class MyPanel extends JPanel {
             g.drawString(elem.get(i), wigth * (i * 2 + 1) + SIZE,
                          Dealer.HEIGHT - SIZE + 20);
             
-            g.drawString(df.format(value.get(i)), SIZE - 40,
-            					Dealer.HEIGHT - SIZE - height + 5);
+        	if(value.get(i)<99999999)
+        		 g.drawString(df.format(value.get(i)), SIZE - 40,
+       					Dealer.HEIGHT - SIZE - height + 5);
+        	else
+        		 g.drawString(value.get(i).toString(), SIZE - 40,
+       					Dealer.HEIGHT - SIZE - height + 5);
+        	
+         
    
             g.drawLine(SIZE, Dealer.HEIGHT - SIZE - height, SIZE + 3,
                        Dealer.HEIGHT - SIZE - height);

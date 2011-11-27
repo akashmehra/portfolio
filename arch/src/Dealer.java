@@ -3,6 +3,7 @@ import java.awt.Font;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.DecimalFormat;
@@ -441,7 +442,12 @@ public class Dealer extends JFrame{
         	}
         	
         	winnerLabel.setText("Winner :"+ sb.toString());
-        	wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth()));
+        	if(playerList.get(0).getWealth()>99999999)
+        		wealthLabel.setText("Wealth : "+ playerList.get(0).getWealth());
+        	else
+        		wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth()));
+        	
+        	//wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth()));
         	roundLabel.setText("Round "+" "+String.valueOf(round));
      	
         }
@@ -478,7 +484,12 @@ public class Dealer extends JFrame{
         	}
         	
         	winnerLabel.setText("Winner :"+ sb.toString());
-        	wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth())+" : "+df.format(playerList.get(0).getSharpeRatio()));
+        	
+        	if(playerList.get(0).getWealth()>99999999)
+        		wealthLabel.setText("Wealth : "+playerList.get(0).getWealth()+" : "+df.format(playerList.get(0).getSharpeRatio()));
+        	else
+            	wealthLabel.setText("Wealth : "+df.format(playerList.get(0).getWealth())+" : "+df.format(playerList.get(0).getSharpeRatio()));
+        	
         	roundLabel.setText("GAME END");
      	
         }
@@ -716,8 +727,11 @@ public class Dealer extends JFrame{
 
 					result = computeOutcome(allocList);
 					outcome = sum(result);
-					
-					double gamblesReturn = outcome - cost;
+					double gamblesReturn;
+					if(cost == 0)
+						gamblesReturn = 0;
+					else
+						gamblesReturn = outcome/cost;
 
 					player.setWealth(player.getWealth()+outcome);
 					player.getReturns().add(gamblesReturn);
@@ -783,7 +797,7 @@ public class Dealer extends JFrame{
 						winners.add(player);
 					}
 					System.out.println("Player " + player.getName() + " : "
-						+ df.format(player.getWealth())+" : "+ df.format(player.getSharpeRatio()));
+						+ player.getWealth()+" : "+ df.format(player.getSharpeRatio()));
 					player.writeToClient("END YOUR WEALTH IS " + df.format(player.getWealth())+ " SHARPERATION : " + df.format(player.getSharpeRatio()));
 				}else
 				{
@@ -809,6 +823,7 @@ public class Dealer extends JFrame{
 	
 	void test()
 	{
+		
 		readGamblesFromFile("gambles");
 		System.out.println(gambleList.size());
 		System.out.println(tables);
@@ -839,6 +854,11 @@ public class Dealer extends JFrame{
 		System.out.println(total);
 		generateTypeChangeList();
 		printList(roundToChangeType);
+		double num = 1234567890123499887655.8765482633;
+		BigDecimal bd = new BigDecimal(num);
+		DecimalFormat df = new DecimalFormat("###.#######");
+		System.out.println(bd);
+		
 	}
 	
 	void printList(List list)
@@ -848,6 +868,7 @@ public class Dealer extends JFrame{
 	}
 	public static void main(String args[]) {
 
+		
 		
 		if (args.length != 6) {
 			

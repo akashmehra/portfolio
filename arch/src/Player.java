@@ -69,7 +69,7 @@ public class Player {
 		{
 			var += Math.pow(ret-mean, 2);
 		}
-		var = Math.sqrt(var);
+		var = Math.sqrt(var/returns.size());
 		this.variance = var;
 		this.sharpeRatio = returnSum / var;
 	}

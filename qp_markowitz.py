@@ -61,11 +61,12 @@ def qp_markowitz(R, u_T, D_T, qp_lambda, X0=None):
                           B +
                           C)
     # Initial function arguments
-    if X0 is None:
-        X0 = np.ones(R.shape[1]) / float(R.shape[1])
-    a0 = 1000.
-    B0 = np.ones(len(R[0])) * 1000.
-    C0 = np.ones(len(R[0])) * 1000.
+    #if X0 is None:
+    # reissb -- 20111123 -- Using previous X causes bad results.
+    X0 = np.ones(R.shape[1]) / float(R.shape[1])
+    a0 = 100.
+    B0 = np.ones(len(R[0])) * 100.
+    C0 = np.ones(len(R[0])) * 100.
     args = (a0, B0, C0)
     # Bounds
     bounds = [(0., 1.) for i in range(len(R[0]))]
@@ -100,7 +101,7 @@ def socket_recv_all(s, timeout=None):
             str_read = str_read + str_more
         else:
             return str_read
-        r_ready, w_ready, x_ready = select.select([s.fileno()], [], [], 1)
+        r_ready, w_ready, x_ready = select.select([s.fileno()], [], [], .005)
 
 def serialize_list(l):
     """ Serialize a list in the game format 'l_0,...,l_n-1'. """
@@ -173,9 +174,13 @@ def play_double_wealth_game(command_args, s, gambles, links):
             s.send(str_alloc + '\n')
 
 def play_cumulative_wealth_game(command_args, s, gambles, links):
-    """ Play a long-term investment game. """
+    """
+    Play a long-term investment game.
+    To optimize for getting rich, slect a higher QP_LAMBDA around 8. To
+    optimize the Sharpe Ratio, select a small QP_LAMBDA less than 1.
+    """
 
-    QP_LAMBDA = 8.
+    QP_LAMBDA = 0.25
     np.set_printoptions(precision=PRECISION+1, suppress=True)
 
     # Initialze R and compute Quadratic Markowitz.
@@ -183,6 +188,8 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
     R = np.array([[1.] + [compute_expected_return(g) for g in gambles]])
     u_T = np.array([np.average(R[:t], axis=0) for t in range(1, R.shape[0]+1)])
     D_T = R - u_T
+    risk_free_ret = np.array([np.average(R)])
+    actual_return = np.array([])
     alloc_denorm = qp_markowitz(R, u_T, D_T, QP_LAMBDA)
     alloc_norm = alloc_normalize(alloc_denorm)
     alloc = alloc_norm * wealth
@@ -210,8 +217,14 @@ def play_cumulative_wealth_game(command_args, s, gambles, links):
         print "Positions: {0}".format(positions)
 #        print "Amounts:", amounts
         print "Returns:\n{0}".format(np.array(returns))
-        wealth = positions[command_args['name']]
+        wealth_now = np.sum(amounts)
+        round_return = wealth_now / wealth
+        actual_return = np.hstack((actual_return, [round_return]))
+        sharpe_ratio = np.average(actual_return - risk_free_ret) / \
+                       np.std(actual_return - risk_free_ret)
+        wealth = wealth_now
         print "Wealth: {0}".format(wealth)
+        print "Sharpe Ratio: {0}".format(sharpe_ratio)
         assert(len(response_lines) == 4)
         if response_lines[3].find('END') == 0:
             print "Game over."

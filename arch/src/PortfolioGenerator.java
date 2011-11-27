@@ -46,7 +46,7 @@ public class PortfolioGenerator {
 		List<Double> rates = new ArrayList<Double>();
 		double sum = 0;
 		for (int i = 0; i < gambleNum; i++) {
-			double r = getARandomNumInRange(1, 10);
+			double r = getARandomNumInRange(1, 2);
 			rates.add(r);
 			sum += r;
 		}
@@ -59,14 +59,14 @@ public class PortfolioGenerator {
 
 	public static Gamble generate(int classNum, double expectedReturn) throws Exception {
 		Gamble gamble = new Gamble();
-		int classId = (int)getARandomNumInRange(0, classNum - 1);
+		int classId = getARandomInttInRange(0, classNum - 1);
 		gamble.classId = classId;
 		gamble.id = gambles.size() + 1;
 
 		BigDecimal bigDecimal = null;
 		while (true) {
 			while (true) {
-				gamble.medProb = getARandomNumInRange(0.4, 1);
+				gamble.medProb = getARandomNumInRange(0.4, 0.8);
 				bigDecimal = new BigDecimal(gamble.medProb);
 				gamble.medProb = bigDecimal.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
 
@@ -104,13 +104,17 @@ public class PortfolioGenerator {
 //		}
 		while (true) {
 			double expectedReturnCopy = expectedReturn;
-			gamble.high_return = getARandomNumInRange(0, expectedReturnCopy / gamble.highProb);
+			double highrange = Math.min(25, (expectedReturnCopy) / gamble.highProb);
+			gamble.high_return = getARandomNumInRange(1, highrange);
 			//String hr = nf.format(gamble.high_return);
 			//gamble.high_return = Double.parseDouble(hr);
 
 			expectedReturnCopy -= gamble.high_return * gamble.highProb;
-
-			gamble.medium_return = getARandomNumInRange(0, Math.min(gamble.high_return, expectedReturnCopy / gamble.medProb));
+			
+			if(Math.min(gamble.high_return, expectedReturnCopy / gamble.medProb)<0.6)
+				continue;
+			
+			gamble.medium_return = getARandomNumInRange(0.6, Math.min(gamble.high_return, expectedReturnCopy / gamble.medProb));
             //String mr = nf.format(gamble.medium_return);
            // gamble.medium_return = Double.parseDouble(mr);
 
@@ -132,11 +136,20 @@ public class PortfolioGenerator {
 		return gamble;
 	}
 
-	public static double getARandomNumInRange(double l, double h) throws Exception {
-		if (h < l) {
+	public static double getARandomNumInRange(double min, double max) throws Exception {
+		if (max<min) {
 			throw new Exception("the high bound should be no less than the low bound!");
 		}
-		return Math.random() * (h - l) + l;
+		return min + (Math.random() * ((max - min)));
+		//return Math.random() * (h - l) + l;
+	}
+	
+	public static int getARandomInttInRange(int min, int max) throws Exception {
+		if (max<min) {
+			throw new Exception("the high bound should be no less than the low bound!");
+		}
+		return min + (int)(Math.random() * ((max - min)+1));
+		//return Math.random() * (h - l) + l;
 	}
 
 	public static double getARandomNumLargerThanAPositive(double n) throws Exception {
@@ -193,10 +206,10 @@ public class PortfolioGenerator {
 	
 	//public static 
 
-	public static void outputToFile() {
+	public static void outputToFile(String path) {
 		FileWriter fw = null;
 		try {
-			fw = new FileWriter("output");
+			fw = new FileWriter(path);
 			fw.write("gamble\n");
 			for (Gamble gamble : gambles) {
 				fw.write(gamble.outputToFile() + "\n");
@@ -253,12 +266,15 @@ public class PortfolioGenerator {
 	}
 
 	public static void main(String[] args) throws Exception {
-		gen(200, 16, 200 * 2);
-		checkGambles(400);
-	    assignCategoryForGambles(16);
-	    checkCategory(16);
-	    genLinks(200);
+		
+		int gambelNum = 50;
+		int classNum = 16;
+		double expectation = 2.0;
+		
+		gen(gambelNum, classNum, gambelNum * expectation);
+		checkGambles(gambelNum * expectation);
+	    genLinks(gambelNum);
 	    checkLinkMatrix();
-	    outputToFile();
+	    outputToFile("hps_gamble");
 	}
 }
